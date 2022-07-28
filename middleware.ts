@@ -12,7 +12,7 @@ async function verify(token: string, secret: string): Promise<any> {
 }
 
 const isTokenExpired = (tokenDate: number) => {
-  console.log(tokenDate < Date.now());
+    console.log(tokenDate, Date.now(), tokenDate < Date.now())
   return tokenDate < Date.now();
 };
 
@@ -21,7 +21,9 @@ const getTokenRegex = (path: string) => {
 };
 
 const isInvalidTask = (task: string, path: string) => {
-  return !path.includes(task);
+  const subStr = path.split("/api/tasks/")[1];
+  console.log("==========", subStr, task, subStr === task)
+  return subStr === task;
 };
 
 export default async function middleware(
@@ -46,7 +48,6 @@ export default async function middleware(
       ["/create-task", "/update-contact"].includes(nextUrl.pathname)
     ) {
       try {
-        console.log("SFSDFSDF")
         await verify(token, secret);
         return NextResponse.next();
       } catch (e) {
@@ -62,7 +63,7 @@ export default async function middleware(
       if (isTokenExpired(exp)) {
         throw new Error("Token expired");
       }
-      if (isInvalidTask(task, nextUrl.pathname)) {
+      if (!isInvalidTask(task, nextUrl.pathname)) {
         throw new Error("Is invalid task");
       }
       return NextResponse.next();

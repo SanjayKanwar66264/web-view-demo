@@ -12,7 +12,7 @@ export default async function handler(
 ) {
   const task = req.query.task || "";
   const iat = Date.now();
-  const exp = Date.now() + 30000;
+  const exp = Date.now() + 120000;
   const token = await new SignJWT({ task })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt(iat)

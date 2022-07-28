@@ -8,12 +8,20 @@ const ERROR_PATH = "/404";
 
 async function verify(token: string, secret: string): Promise<any> {
   const { payload } = await jwtVerify(token, new TextEncoder().encode(secret));
-  console.log("payload.exp", payload.exp);
   return payload;
 }
 
 const isTokenExpired = (tokenDate: number) => {
+  console.log(tokenDate < Date.now());
   return tokenDate < Date.now();
+};
+
+const getTokenRegex = (path: string) => {
+  return ["/api/token/create", "/api/token/update"].includes(path);
+};
+
+const isInvalidTask = (task: string, path: string) => {
+  return !path.includes(task);
 };
 
 export default async function middleware(
@@ -22,13 +30,14 @@ export default async function middleware(
 ) {
   const token = request.headers.get("authorization");
   const { nextUrl } = request;
-  if (nextUrl.pathname === "/" || nextUrl.pathname.includes("/_next/static")) {
-    return NextResponse.next()
-  } else if (
-    !token &&
-    (!store || !store.get("token")) &&
-    nextUrl.pathname !== "/"
+  if (
+    nextUrl.pathname === "/" ||
+    nextUrl.pathname.includes("/_next/static") ||
+    getTokenRegex(nextUrl.pathname)
   ) {
+    return NextResponse.next();
+  }
+  if (!token) {
     nextUrl.pathname = ERROR_PATH;
     return NextResponse.rewrite(nextUrl);
   } else {
@@ -37,28 +46,26 @@ export default async function middleware(
       ["/create-task", "/update-contact"].includes(nextUrl.pathname)
     ) {
       try {
+        console.log("SFSDFSDF")
         await verify(token, secret);
-        store.set("token", token);
         return NextResponse.next();
       } catch (e) {
         console.error("Error validating token", e);
         nextUrl.pathname = ERROR_PATH;
-        nextUrl.pathname = "/success-screen";
-        return NextResponse.rewrite(nextUrl);
+        throw new Error("Invalid Token expired");
       }
     } else if (
-      store.get("token") &&
-      ["/save-task"].includes(nextUrl.pathname)
+      token &&
+      ["/api/tasks/create", "/api/tasks/update"].includes(nextUrl.pathname)
     ) {
-      const storedToken = store.get("token");
-      const { exp } = await verify(storedToken, secret);
+      const { task, exp } = await verify(token, secret);
       if (isTokenExpired(exp)) {
-        nextUrl.pathname = ERROR_PATH;
-        return NextResponse.rewrite(nextUrl);
+        throw new Error("Token expired");
       }
-      nextUrl.pathname = "/success-screen";
-      store.remove("token");
-      return NextResponse.rewrite(nextUrl);
+      if (isInvalidTask(task, nextUrl.pathname)) {
+        throw new Error("Is invalid task");
+      }
+      return NextResponse.next();
     }
     console.error(`Error url path didn't matched`);
     nextUrl.pathname = ERROR_PATH;

@@ -1,7 +1,8 @@
 import "../styles/globals.css";
+import "../styles/index.css";
 import type { AppProps } from "next/app";
 
-function MyApp({ Component, pageProps: { session, ...pageProps } }: any) {
+function MyApp({ Component, pageProps: { session, ...pageProps } }: AppProps) {
   return <Component {...pageProps} />;
 }
 
